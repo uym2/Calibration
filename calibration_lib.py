@@ -18,7 +18,7 @@ def deviation_from_clock(tree):
     return factor    
 
 
-def calibrate_log_opt(tree,smpl_times):
+def calibrate_log_opt(tree,smpl_times,root_age=None):
     def f(x):
         #print(x)
         return sum([log(y)*log(y) for y in x[:-1]])
@@ -50,8 +50,11 @@ def calibrate_log_opt(tree,smpl_times):
             if node is not tree.seed_node: 
                 node.constraint = children[0].constraint
                 node.constraint[node.idx] = node.edge_length
+            elif root_age is not None:
+                a = np.array(children[0].constraint[:-1] + [children[0].constraint[-1]-root_age])
+                cons.append({'type':'eq','fun':g,'args':(a,)})    
 
-    x0 = [1.]*N + [0.006]
+    x0 = [1.]*N + [0.8]
     bounds = [(0.00000001,999999)]*(N+1)
 
     result = minimize(f,x0,bounds=bounds,constraints=cons,method="SLSQP")
@@ -61,6 +64,11 @@ def calibrate_log_opt(tree,smpl_times):
     
     print("Clock rate: " + str(s))
     
+    for node in tree.postorder_node_iter():
+        if node is not tree.seed_node:
+            node.edge_length *= x[node.idx]/s
+    
+    '''
     for node in tree.postorder_node_iter():
         if node.is_leaf():
             #node.time = node.smplTime
@@ -72,7 +80,7 @@ def calibrate_log_opt(tree,smpl_times):
             #print(node.label +  " " + str(node.time))
         #if node is not tree.seed_node:
         #    node.edge_length *= x[node.idx]/s
-    
+    '''
     return f
 
 def calibrate_with_sampling_time(tree,smpl_times,verbose=False):
