@@ -24,14 +24,11 @@ with open(args["samplingTime"],"r") as fin:
         name,time = line.split()
         smpl_times[name] = float(time)
 
-#with open(args["nodeDate"],'w') as fout:
-#i = 0
 for tree in myTrees:
-    #f = calibrate_with_sampling_time(tree,smpl_times)
     if args["composite"]:
         s = calibrate_composite_opt(tree,smpl_times,root_age=rootAge)
     else:    
-        s = calibrate_log_opt(tree,smpl_times,root_age=rootAge)
+        s = calibrate_log_opt(tree,smpl_times,root_age=rootAge,brScale=False)
 
 myTrees.write_to_path(args["timeTree"],"newick")
 print("Clock rate: " + str(s))

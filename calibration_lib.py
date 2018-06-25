@@ -1,9 +1,50 @@
 from dendropy import Tree
 import numpy as np
-from QP import quadprog_solve_qp, cvxopt_solve_qp
+#from QP import quadprog_solve_qp, cvxopt_solve_qp
 from math import exp,log, sqrt
 from scipy.stats.stats import pearsonr
 from scipy.optimize import minimize
+
+def lnorm_deviation_from_clock(tree,sd,rate):
+# Note: we force the distribution to have mean 1, so 
+# there is only 1 parameter to control the lognormal distribution
+# sd here is the standard deviation of the lognormal distribution, 
+# NOT its underlying normal distribution
+
+    tree1 = Tree(tree)
+    mu = -0.5*log(sd*sd+1)
+    sigma = sqrt(log(sd*sd+1))
+
+    for node in tree1.postorder_node_iter():
+        if node is tree1.seed_node:
+            continue
+        f = np.random.lognormal(mean=mu,sigma=sigma)
+        node.edge_length = node.edge_length*f*rate
+    return tree1    
+
+def exp_deviation_from_clock(tree,rate):
+# Note: we force the distribution to have mean 1, so 
+#there is no free parameter for an exponential distribution
+
+    tree1 = Tree(tree)
+
+    for node in tree1.postorder_node_iter():
+        if node is tree1.seed_node:
+            continue
+        f = np.random.exponential()
+        node.edge_length = node.edge_length*f*rate
+    return tree1    
+
+def gamma_deviation_from_clock(tree,shape,rate):
+    tree1 = Tree(tree)
+
+    for node in tree1.postorder_node_iter():
+        if node is tree1.seed_node:
+            continue
+        f = np.random.gamma(shape,scale=1/shape)
+        node.edge_length = node.edge_length*f*rate
+    return tree1    
+
 
 def deviation_from_clock(tree):
     factor = []
@@ -17,11 +58,15 @@ def deviation_from_clock(tree):
 
     return factor    
 
-
-def calibrate_log_opt(tree,smpl_times,root_age=None):
-    def f(x):
-        #print(x)
+def calibrate_composite_opt(tree,smpl_times,root_age=None,c=10.0,L=1219.0):
+    def f0(x):
         return sum([log(y)*log(y) for y in x[:-1]])
+
+    def f1(x,*args):
+        v = args[1]
+        return sum([log(w)*log(w)/v + L*b*(w-1)*(w-1)/w for (w,b) in zip(x[:-1],args[0])])
+        #return sum([L*b*(w-1)*(w-1)/w for (w,b) in zip(x[:-1],args[0])])
+        #return sum([b*b*(w-1)*(w-1)/(b+c/L) for (w,b) in zip(x[:-1],args[0])])
         #return sum([1.0/y*1.0/y-2*1.0/y for y in x[:-1]])
 
     def g(x,a):    
@@ -33,7 +78,8 @@ def calibrate_log_opt(tree,smpl_times,root_age=None):
     cons = []
     
     idx = 0
-    
+    b = [1.]*N
+
     for node in tree.postorder_node_iter():
         node.idx = idx
         idx += 1
@@ -41,6 +87,7 @@ def calibrate_log_opt(tree,smpl_times,root_age=None):
             node.constraint = [0.0]*(N+1)
             node.constraint[node.idx] = node.edge_length
             node.constraint[N] = -smpl_times[node.taxon.label]
+            b[node.idx] = node.edge_length
         else:
             children = list(node.child_node_iter())
                        
@@ -50,19 +97,105 @@ def calibrate_log_opt(tree,smpl_times,root_age=None):
             if node is not tree.seed_node: 
                 node.constraint = children[0].constraint
                 node.constraint[node.idx] = node.edge_length
+                b[node.idx] = node.edge_length
             elif root_age is not None:
                 a = np.array(children[0].constraint[:-1] + [children[0].constraint[-1]-root_age])
                 cons.append({'type':'eq','fun':g,'args':(a,)})    
 
-    x0 = [1.]*N + [0.8]
+    x0 = [1.]*N + [0.01]
     bounds = [(0.00000001,999999)]*(N+1)
+    x1 = minimize(fun=f0,x0=x0,bounds=bounds,constraints=cons,method="SLSQP").x
 
-    result = minimize(f,x0,bounds=bounds,constraints=cons,method="SLSQP")
+    l_sum = 0
+    l_ssq = 0
+
+    for y in x1[:-1]:
+        l_sum += log(y)
+        l_ssq += log(y)*log(y)
+
+    v = l_ssq/N - (l_sum/N)*(l_sum/N)    
+    print(v)
+    
+    b1 = [w_i*b_i for (w_i,b_i) in zip(x1[:-1],b)]
+
+    args = (b1,v)
+    bounds = [(0.00000001,999999)]*(N+1)
+    
+    x2 = minimize(fun=f1,x0=x1,args=args,bounds=bounds,constraints=cons,method="SLSQP").x
+    
+    s = x2[N]
+    
+    
+    for node in tree.postorder_node_iter():
+        if node is not tree.seed_node:
+            node.edge_length *= x2[node.idx]/s
+    
+    return s
+
+def calibrate_log_opt(tree,smpl_times,root_age=None,brScale=False):
+    def f0(x,*args):
+        return sum([b*(w-1)*(w-1) for (w,b) in zip(x[:-1],args[0])])
+
+    def f1(x):
+        return sum([log(y)*log(y) for y in x[:-1]])
+    
+    def f2(x,*args):
+        return sum([b*log(y)*log(y) for (y,b) in zip(x[:-1],args[0])])
+
+    def g(x,a):    
+        return sum([ x[i]*a[i] for i in range(len(x)) ])
+
+    def h(x,p):
+        return x[p]
+
+    n = len(list(tree.leaf_node_iter()))
+    N = 2*n-2
+    cons_eq = []
+    cons_ineq = []
+    
+    idx = 0
+    b = [1.]*N
+    
+    for i in range(N):
+        cons_ineq.append({'type':'ineq','fun':h,'args':(i,)})
+
+    for node in tree.postorder_node_iter():
+        node.idx = idx
+        idx += 1
+        if node.is_leaf():
+            node.constraint = [0.0]*(N+1)
+            node.constraint[node.idx] = node.edge_length
+            node.constraint[N] = -smpl_times[node.taxon.label]
+            b[node.idx] = node.edge_length
+        else:
+            children = list(node.child_node_iter())
+                       
+            a = np.array([ (children[0].constraint[i] - children[1].constraint[i]) for i in range(N+1) ])
+            cons_eq.append({'type':'eq','fun':g,'args':(a,)})
+
+            if node is not tree.seed_node: 
+                node.constraint = children[0].constraint
+                node.constraint[node.idx] = node.edge_length
+                b[node.idx] = node.edge_length
+            elif root_age is not None:
+                a = np.array(children[0].constraint[:-1] + [children[0].constraint[-1]-root_age])
+                cons_eq.append({'type':'eq','fun':g,'args':(a,)})    
+
+    x0 = [1.]*N + [0.01]
+    bounds = [(0.00000001,999999)]*(N+1)
+    args = (b)
+    #x1 = minimize(fun=f0,x0=x0,args=args,bounds=bounds,constraints=cons_eq+cons_ineq,method="SLSQP").x
+    
+    #x0 = [1.]*N + [0.02]
+    #bounds = [(0.00000001,999999)]*(N+1)
+    
+    if brScale:
+        result = minimize(fun=f2,x0=x0,args=args,bounds=bounds,constraints=cons_eq,method="SLSQP")
+    else:
+        result = minimize(fun=f1,x0=x0,bounds=bounds,constraints=cons_eq,method="SLSQP")
     x = result.x
-    #f = f0 
     s = x[N]
     
-    print("Clock rate: " + str(s))
     
     for node in tree.postorder_node_iter():
         if node is not tree.seed_node:
@@ -81,7 +214,8 @@ def calibrate_log_opt(tree,smpl_times,root_age=None):
         #if node is not tree.seed_node:
         #    node.edge_length *= x[node.idx]/s
     '''
-    return f
+
+    return s
 
 def calibrate_with_sampling_time(tree,smpl_times,verbose=False):
     if verbose:
