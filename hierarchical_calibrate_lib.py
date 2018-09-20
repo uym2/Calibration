@@ -124,10 +124,10 @@ with open(argv[2],'read') as fin:
 
 hierachical_logDate(a_tree,sampling_times)              
 
-ID = 0
+#ID = 0
 for node in a_tree.preorder_node_iter():
-    node.label = ID
-    ID += 1
+    #node.label = ID
+    #ID += 1
     if node.is_leaf():
         print(str(node.taxon.label) + " " + str(node.age))
     else:
