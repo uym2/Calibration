@@ -41,6 +41,7 @@ def calibrate_node(node,sampling_times):
         node.h = 0
         node.t = sampling_times[node.taxon.label]
         node.mu = 1.0
+        node.w = 1.0
     else:
         node1,node2 = node.child_nodes() # assuming node has exactly two children (the tree is perfectly bifurcating)
         if node1.mu is not None and node2.mu is not None:
@@ -91,6 +92,8 @@ def calibrate_node(node,sampling_times):
         node.h = node1.h*node1.alpha + w1*node1.edge_length
         node.t = node1.t
         node.mu = mu
+        node1.w = w1
+        node2.w = w2
 
 def calibrate_bUp(a_tree,sampling_times):
     for node in a_tree.postorder_node_iter():
@@ -104,6 +107,7 @@ def calibrate_tDown(a_tree):
     for node in a_tree.preorder_node_iter():
         if node is not a_tree.seed_node:
             node.alpha *= node.parent_node.alpha
+            node.edge_length *= node.w*node.parent_node.alpha
         node.h = node.h*node.alpha/mu
 
 def compute_age(a_tree):
