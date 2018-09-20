@@ -44,8 +44,8 @@ def calibrate_node(node,sampling_times):
     else:
         node1,node2 = node.child_nodes() # assuming node has exactly two children (the tree is perfectly bifurcating)
         if node1.mu is not None and node2.mu is not None:
-            #P = node1.h/node1.mu - node2.h - node1.t + node2.t
-            P = node1.h - node2.h - node1.t + node2.t
+            P = node1.h/node1.mu - node2.h/node2.mu - node1.t + node2.t
+            #P = node1.h - node2.h - node1.t + node2.t
             Q = node1.LG + node2.LG - node1.N*node1.mu - node2.N*node2.mu
             args = (node1.N + node2.N, 2*Q)
             x0 = [1.0,1.0,node1.mu]
@@ -88,7 +88,7 @@ def calibrate_node(node,sampling_times):
         node2.alpha = alpha2
         node.N = node1.N + node2.N + 2
         node.LG = node1.N*log(node1.alpha) + node2.N*log(node2.alpha) + node1.LG + node2.LG + log(w1) + log(w2)
-        node.h = (node1.h*node1.alpha + w1*node1.edge_length)/mu
+        node.h = node1.h*node1.alpha + w1*node1.edge_length
         node.t = node1.t
         node.mu = mu
 
