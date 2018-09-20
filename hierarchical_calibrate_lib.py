@@ -99,6 +99,7 @@ def calibrate_bUp(a_tree,sampling_times):
 def calibrate_tDown(a_tree):
     a_tree.seed_node.alpha = 1
     mu = a_tree.seed_node.mu
+    print(mu)
 
     for node in a_tree.preorder_node_iter():
         node.h = node.h*node.alpha*node.mu/mu
@@ -132,13 +133,13 @@ with open(argv[2],'read') as fin:
 hierachical_logDate(a_tree,sampling_times)              
 
 #ID = 0
-for node in a_tree.preorder_node_iter():
+'''for node in a_tree.preorder_node_iter():
     #node.label = ID
     #ID += 1
     if node.is_leaf():
         print(str(node.taxon.label) + " " + str(node.age))
     else:
         print(str(node.label) + " " + str(node.age))
-            
+'''            
     
 a_tree.write_to_path("Test.tre","newick")        
