@@ -40,7 +40,7 @@ def calibrate_node(node,sampling_times):
         node.LG = 0
         node.h = 0
         node.t = sampling_times[node.taxon.label]
-        node.mu = None
+        node.mu = 1.0
     else:
         node1,node2 = node.child_nodes() # assuming node has exactly two children (the tree is perfectly bifurcating)
         if node1.mu is not None and node2.mu is not None:
