@@ -83,8 +83,6 @@ def calibrate_node(node,sampling_times):
                     bounds = [(0.00000001,999999)]*5
                     w1,w2,alpha1,alpha2,mu = minimize(args=args,fun=f3,x0=x0,bounds=bounds,constraints=[{'type':'eq','fun':g3,'args':(node1.edge_length,node2.edge_length,node1.h,node2.h,node1.t-node2.t,)}],method="SLSQP").x 
 
-        print(str(node.label) + " " + str(w1) + " " + str(w2) + " " + str(alpha1) + " " + str(alpha2) + " " + str(mu))
-            
         node1.alpha = alpha1
         node2.alpha = alpha2
         node.N = node1.N + node2.N + 2
@@ -130,13 +128,13 @@ with open(argv[2],'read') as fin:
 hierachical_logDate(a_tree,sampling_times)              
 
 #ID = 0
-'''for node in a_tree.preorder_node_iter():
+for node in a_tree.preorder_node_iter():
     #node.label = ID
     #ID += 1
     if node.is_leaf():
         print(str(node.taxon.label) + " " + str(node.age))
     else:
         print(str(node.label) + " " + str(node.age))
-'''            
+            
     
 a_tree.write_to_path("Test.tre","newick")        
