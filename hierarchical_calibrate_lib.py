@@ -102,9 +102,9 @@ def calibrate_tDown(a_tree):
     print(mu)
 
     for node in a_tree.preorder_node_iter():
-        node.h = node.h*node.alpha*node.mu/mu
-        for c in node.child_node_iter():
-            c.alpha *= node.alpha
+        if node is not a_tree.seed_node:
+            node.alpha *= node.parent_node().alpha
+        node.h = node.h*node.alpha/mu
 
 def compute_age(a_tree):
     for node in a_tree.postorder_node_iter():
