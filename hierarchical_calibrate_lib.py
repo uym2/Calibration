@@ -45,7 +45,6 @@ def calibrate_node(node,sampling_times):
     else:
         node1,node2 = node.child_nodes() # assuming node has exactly two children (the tree is perfectly bifurcating)
         if node1.mu is not None and node2.mu is not None:
-            print("Scaling")
             P = node1.h/node1.mu - node2.h/node2.mu - node1.t + node2.t
             Q = node1.LG + node2.LG - node1.N*node1.mu - node2.N*node2.mu
             args = (node1.N + node2.N, 2*Q)
@@ -53,6 +52,7 @@ def calibrate_node(node,sampling_times):
             bounds = [(0.00000001,999999)]*3
             w1,w2,mu = minimize(args=args,fun=f1,x0=x0,bounds=bounds,constraints=[{'type':'eq','fun':g1,'args':(node1.edge_length,node2.edge_length,P,)}],method="SLSQP").x 
 
+            print("Scaling: " + str(node1.mu) + " " + str(node2.mu) + " " + str(mu))
         
             alpha1 = mu/node1.mu
             alpha2 = mu/node2.mu
