@@ -120,6 +120,7 @@ a_tree = Tree.get_from_path(argv[1],"newick")
 sampling_times = {}
 
 with open(argv[2],'read') as fin:
+    fin.readline()
     for line in fin:
         taxon,time = line.rstrip().split()
         sampling_times[taxon] = float(time)
