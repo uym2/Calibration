@@ -80,7 +80,7 @@ def calibrate_node(node,sampling_times):
                     mu = 1.0
                 else:
                     args = (node1.N,node2.N,node1.LG,node2.LG)
-                    x0 = [1.0,1.0,1.0,1.0,0.002]
+                    x0 = [1.0,1.0,1.0,1.0,0.006]
                     bounds = [(0.00000001,999999)]*5
                     w1,w2,alpha1,alpha2,mu = minimize(args=args,fun=f3,x0=x0,bounds=bounds,constraints=[{'type':'eq','fun':g3,'args':(node1.edge_length,node2.edge_length,node1.h,node2.h,node1.t-node2.t,)}],method="SLSQP").x 
 
