@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from dendropy import Tree
 import numpy as np
 from QP import quadprog_solve_qp, cvxopt_solve_qp
