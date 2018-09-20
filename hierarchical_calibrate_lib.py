@@ -2,7 +2,7 @@
 
 from dendropy import Tree
 import numpy as np
-from QP import quadprog_solve_qp, cvxopt_solve_qp
+#from QP import quadprog_solve_qp, cvxopt_solve_qp
 from math import exp,log, sqrt
 from scipy.optimize import minimize
 
