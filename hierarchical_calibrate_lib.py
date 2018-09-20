@@ -99,6 +99,7 @@ def calibrate_tDown(a_tree):
     a_tree.seed_node.alpha = 1
     for node in a_tree.preorder_node_iter():
         for c in node.child_node_iter():
+            c.alpha *= node.alpha
             c.h *= node.alpha
 
 def compute_age(a_tree):
