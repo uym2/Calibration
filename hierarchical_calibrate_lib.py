@@ -44,7 +44,8 @@ def calibrate_node(node,sampling_times):
     else:
         node1,node2 = node.child_nodes() # assuming node has exactly two children (the tree is perfectly bifurcating)
         if node1.mu is not None and node2.mu is not None:
-            P = node1.h/node1.mu - node2.h/node2.mu - node1.t + node2.t
+            #P = node1.h/node1.mu - node2.h - node1.t + node2.t
+            P = node1.h - node2.h - node1.t + node2.t
             Q = node1.LG + node2.LG - node1.N*node1.mu - node2.N*node2.mu
             args = (node1.N + node2.N, 2*Q)
             x0 = [1.0,1.0,node1.mu]
@@ -76,7 +77,7 @@ def calibrate_node(node,sampling_times):
                     x0 = [1.0,1.0,1.0,1.0]
                     bounds = [(0.00000001,999999)]*4
                     w1,w2,alpha1,alpha2 = minimize(args=args,fun=f2,x0=x0,bounds=bounds,constraints=[{'type':'eq','fun':g2,'args':(node1.edge_length,node2.edge_length,node1.h,node2.h,)}],method="SLSQP").x 
-                    mu = None
+                    mu = 1.0
                 else:
                     args = (node1.N,node2.N,node1.LG,node2.LG)
                     x0 = [1.0,1.0,1.0,1.0,0.002]
@@ -87,7 +88,7 @@ def calibrate_node(node,sampling_times):
         node2.alpha = alpha2
         node.N = node1.N + node2.N + 2
         node.LG = node1.N*log(node1.alpha) + node2.N*log(node2.alpha) + node1.LG + node2.LG + log(w1) + log(w2)
-        node.h = node1.h*node1.alpha + w1*node1.edge_length
+        node.h = (node1.h*node1.alpha + w1*node1.edge_length)/mu
         node.t = node1.t
         node.mu = mu
 
@@ -97,8 +98,10 @@ def calibrate_bUp(a_tree,sampling_times):
 
 def calibrate_tDown(a_tree):
     a_tree.seed_node.alpha = 1
+    mu = a_tree.seed_node.mu
+
     for node in a_tree.preorder_node_iter():
-        node.h *= node.alpha
+        node.h = node.h*node.alpha*node.mu/mu
         for c in node.child_node_iter():
             c.alpha *= node.alpha
 
